@@ -166,7 +166,7 @@ impl Board {
             println!("|");
         }
         for x in 0..WIDTH {
-            print!("+-");
+            print!("+--");
         }
         println!("+");
         for x in 0..WIDTH {
