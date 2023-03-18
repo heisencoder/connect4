@@ -37,6 +37,7 @@ impl Cell {
     }
 }
 
+#[derive(Clone)]
 struct Board {
     bitmap: u64,
 }
@@ -192,7 +193,7 @@ fn monte_carlo(board: &Board, cell: Cell) -> usize {
             if valid_moves.is_empty() {
                 break;
             }
-            let index = rng.gen_range(0, valid_moves.len());
+            let index = rng.gen_range(0..valid_moves.len());
             let x = valid_moves[index];
             sim_board.make_move(x, sim_cell);
             if sim_board.is_win(sim_cell) {
