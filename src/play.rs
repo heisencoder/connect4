@@ -1,6 +1,6 @@
 // Plays connect 4 using Monte Carlo
 
-use crate::board::{self, Board, Cell};
+use crate::board::{self, Board, Cell, MoveResult};
 use rand::{thread_rng, Rng};
 
 const NUM_MOVES: usize = 1000;
@@ -24,8 +24,8 @@ pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
             }
             let index = rng.gen_range(0..valid_moves.len());
             let x = valid_moves[index];
-            sim_board.make_move(x);
-            if sim_board.is_win(sim_cell) {
+            let result = sim_board.make_move(x);
+            if result == MoveResult::Win_X || result == MoveResult::Win_O {
                 wins += 1;
                 break;
             }

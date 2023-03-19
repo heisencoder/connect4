@@ -10,10 +10,6 @@ fn main() {
     let mut cell = Cell::X;
     loop {
         board.print();
-        if board.is_win(cell) {
-            println!("{} wins!", cell.to_char());
-            break;
-        }
         if board.is_full() {
             println!("It's a draw!");
             break;
