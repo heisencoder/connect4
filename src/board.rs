@@ -38,16 +38,33 @@ impl Cell {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq)]
+pub enum MoveResult {
+    None,    // No win, loss, or draw
+    Win,     // The move wins the game
+    Draw,    // The game is filled up and is a draw
+    Illegal, // The move is illegal
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub struct Board {
-    // Pieces are stored in columns
+    // Pieces are stored in columns. The player to move next is '1'
     bitmap: u64,
+
+    // bitmap of all board positions that contain a piece (as marked with '1')
     mask: u64,
+
+    // Total number of moves made on this board.
+    moves: usize,
 }
 
 impl Board {
     pub fn new() -> Self {
-        Self { bitmap: 0, mask: 0 }
+        Self {
+            bitmap: 0,
+            mask: 0,
+            moves: 0,
+        }
     }
 
     pub fn get(&self, x: usize, y: usize) -> Cell {
@@ -56,54 +73,49 @@ impl Board {
         if bit & self.mask == 0 {
             Cell::Empty
         } else if (self.bitmap & bit) != 0 {
-            Cell::X
+            if self.moves & 1 == 0 {
+                Cell::X
+            } else {
+                Cell::O
+            }
         } else {
-            Cell::O
-        }
-    }
-
-    pub fn set(&mut self, x: usize, y: usize, cell: Cell) {
-        let pos = x * PADDED_HEIGHT + y;
-        let bit = 1 << pos;
-        match cell {
-            Cell::Empty => {
-                self.bitmap &= !bit;
-                self.mask &= !bit;
-            }
-            Cell::X => {
-                self.bitmap |= bit;
-                self.mask |= bit;
-            }
-            Cell::O => {
-                self.bitmap &= !bit;
-                self.mask |= bit;
+            if self.moves & 1 != 0 {
+                Cell::X
+            } else {
+                Cell::O
             }
         }
     }
 
     pub fn is_valid_move(&self, x: usize) -> bool {
-        self.mask & (1 << x * PADDED_HEIGHT + HEIGHT - 1) == 0
+        x < WIDTH && self.mask & (1 << x * PADDED_HEIGHT + HEIGHT - 1) == 0
     }
 
-    pub fn make_move(&mut self, x: usize, cell: Cell) -> bool {
-        if cell == Cell::Empty {
-            unimplemented!("Removing cells not implemented!");
+    pub fn get_current_player(&self) -> Cell {
+        match self.moves & 1 {
+            0 => Cell::X,
+            1 => Cell::O,
+            _ => Cell::Empty,
         }
+    }
+
+    /// Adds the current player's piece to the given column.
+    /// Returns whether this move results in a win.
+    pub fn make_move(&mut self, x: usize) -> MoveResult {
         if !self.is_valid_move(x) {
-            panic!("Invalid Move: {}!", x);
+            return MoveResult::Illegal;
         }
 
         let bit = ((self.mask + (1 << x * PADDED_HEIGHT)) | self.mask) ^ self.mask;
         self.mask |= bit;
-
-        if cell == Cell::X {
-            self.bitmap |= bit;
-        }
-        true
+        self.bitmap |= bit;
+        self.bitmap ^= self.mask; // Flip all colors
+        self.moves += 1;
+        MoveResult::None
     }
 
     pub fn is_full(&self) -> bool {
-        (self.bitmap & ((1 << HEIGHT * WIDTH) - 1)) == ((1 << HEIGHT * WIDTH) - 1)
+        self.moves == HEIGHT * WIDTH
     }
 
     pub fn is_win(&self, cell: Cell) -> bool {
@@ -131,6 +143,8 @@ impl Board {
 
 #[cfg(test)]
 mod board_tests {
+    use crate::board::MoveResult;
+
     use super::{Board, Cell, HEIGHT, WIDTH};
 
     #[test]
@@ -139,7 +153,7 @@ mod board_tests {
         let mut cell = Cell::X;
 
         for x in 0..WIDTH {
-            board.make_move(x, cell);
+            board.make_move(x);
             board.print();
             assert!(board.get(x, 0) == cell);
             cell = cell.switch();
@@ -152,12 +166,12 @@ mod board_tests {
         let mut cell = Cell::X;
 
         for y in 0..HEIGHT {
-            assert!(board.make_move(0, cell));
+            assert!(board.make_move(0) == MoveResult::None);
             board.print();
             assert!(board.get(0, y) == cell);
             cell = cell.switch();
         }
-        assert!(!board.make_move(0, cell));
+        assert!(board.make_move(0) == MoveResult::Illegal);
         board.print();
     }
 }

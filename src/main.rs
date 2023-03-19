@@ -32,7 +32,7 @@ fn main() {
         }
         match best_move {
             Some(x) => {
-                board.make_move(x, cell);
+                board.make_move(x);
                 cell = match cell {
                     Cell::X => Cell::O,
                     Cell::O => Cell::X,
