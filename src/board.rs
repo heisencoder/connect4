@@ -12,15 +12,6 @@ pub enum Cell {
 }
 
 impl Cell {
-    pub fn from_char(c: char) -> Option<Cell> {
-        match c {
-            '.' => Some(Cell::Empty),
-            'X' => Some(Cell::X),
-            'O' => Some(Cell::O),
-            _ => None,
-        }
-    }
-
     pub fn to_char(&self) -> char {
         match self {
             Cell::Empty => '.',
@@ -41,8 +32,8 @@ impl Cell {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MoveResult {
     None,    // No win, loss, or draw
-    Win_X,   // The move wins the game for X (i.e., first player)
-    Win_O,   // The move wins the game for O (i.e., second player)
+    WinX,    // The move wins the game for X (i.e., first player)
+    WinO,    // The move wins the game for O (i.e., second player)
     Draw,    // The game is filled up and is a draw
     Illegal, // The move is illegal
 }
@@ -100,6 +91,7 @@ impl Board {
         }
     }
 
+    #[cfg(test)]
     pub fn make_moves(&mut self, moves: &Vec<usize>) -> MoveResult {
         let mut last_result = MoveResult::None;
         for m in moves {
@@ -123,8 +115,8 @@ impl Board {
         if self.check_win(bit, col) {
             match self.get_current_player() {
                 // reverse because this is now the next player.
-                Cell::O => MoveResult::Win_X,
-                Cell::X => MoveResult::Win_O,
+                Cell::O => MoveResult::WinX,
+                Cell::X => MoveResult::WinO,
                 _ => unreachable!(),
             }
         } else if self.is_full() {
@@ -154,18 +146,18 @@ impl Board {
     }
 
     pub fn print(&self) {
-        for y in (0..HEIGHT).rev() {
-            for x in 0..WIDTH {
-                print!("|{} ", self.get(x, y).to_char());
+        for row in (0..HEIGHT).rev() {
+            for col in 0..WIDTH {
+                print!("|{} ", self.get(col, row).to_char());
             }
             println!("|");
         }
-        for _x in 0..WIDTH {
+        for _col in 0..WIDTH {
             print!("+--");
         }
         println!("+");
-        for x in 0..WIDTH {
-            print!("|{} ", x);
+        for col in 0..WIDTH {
+            print!("|{} ", col);
         }
         println!("|");
         println!();
@@ -187,7 +179,7 @@ mod board_tests {
         // fill first two columns up to 3 rows high, each with the same Cell.
         assert_eq!(board.make_moves(&vec![0, 1, 0, 1, 0, 1]), MoveResult::None);
         board.print();
-        assert_eq!(board.make_move(0), MoveResult::Win_X);
+        assert_eq!(board.make_move(0), MoveResult::WinX);
 
         // Fill last two columns, but make O win in the upper-right corner.
         board = Board::new();
@@ -196,7 +188,7 @@ mod board_tests {
             board.make_moves(&vec![6, 5, 6, 5, 5, 6, 5, 6, 5, 6, 4]),
             MoveResult::None
         );
-        assert_eq!(board.make_move(6), MoveResult::Win_O);
+        assert_eq!(board.make_move(6), MoveResult::WinO);
     }
 
     #[test]
@@ -205,7 +197,7 @@ mod board_tests {
         let mut moves = 0;
 
         for x in 0..WIDTH {
-            for y in 0..HEIGHT {
+            for _row in 0..HEIGHT {
                 let result = board.make_move(x);
                 moves += 1;
                 board.print();
@@ -236,10 +228,10 @@ mod board_tests {
         let mut board = Board::new();
         let mut cell = Cell::X;
 
-        for y in 0..HEIGHT {
+        for row in 0..HEIGHT {
             assert!(board.make_move(0) == MoveResult::None);
             board.print();
-            assert!(board.get(0, y) == cell);
+            assert!(board.get(0, row) == cell);
             cell = cell.switch();
         }
         assert!(board.make_move(0) == MoveResult::Illegal);

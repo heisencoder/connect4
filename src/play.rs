@@ -25,7 +25,7 @@ pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
             let index = rng.gen_range(0..valid_moves.len());
             let x = valid_moves[index];
             let result = sim_board.make_move(x);
-            if result == MoveResult::Win_X || result == MoveResult::Win_O {
+            if result == MoveResult::WinX || result == MoveResult::WinO {
                 wins += 1;
                 break;
             }
