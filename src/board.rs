@@ -127,17 +127,51 @@ impl Board {
     }
 
     fn check_win(&self, bit: u64, col: usize) -> bool {
+        if self.check_vertical_win(bit, col) {
+            return true;
+        }
+        //if self.check_horizontal_win(bit, col) {
+        //    return true;
+        //}
+        false
+    }
+
+    fn check_vertical_win(&self, bit: u64, col: usize) -> bool {
         let col0_bit = bit >> (col * PADDED_HEIGHT); // shift to first column
 
         // Check vertical
         // Only possible to have vertical win in rows 3 or higher
         if col0_bit >= 1 << 3 {
-            let pattern = (((1 << 4) - 1) * bit) >> 3;
-            if self.bitmap & pattern == pattern {
+            let mask = ((1 << 4) - 1) * (bit >> 3);
+            if self.bitmap & mask == mask {
                 return true;
             }
         }
+        false
+    }
 
+    fn check_horizontal_win(&self, bit: u64, col: usize) -> bool {
+        const LEFT_MASK: u64 = 1 << (0 * PADDED_HEIGHT)
+            | 1 << (1 * PADDED_HEIGHT)
+            | 1 << (2 * PADDED_HEIGHT)
+            | 1 << (3 * PADDED_HEIGHT);
+
+        let mut mask = if col > WIDTH - 4 {
+            bit >> (PADDED_HEIGHT * (col - (WIDTH - 4)))
+        } else {
+            bit
+        } * LEFT_MASK;
+
+        loop {
+            if self.bitmap & mask == mask {
+                return true;
+            }
+            // Check whether this mask is already at the left side of the board.
+            if mask & ((1 << PADDED_HEIGHT) - 1) != 0 {
+                break;
+            }
+            mask <<= PADDED_HEIGHT;
+        }
         false
     }
 
@@ -202,9 +236,9 @@ mod board_tests {
                 moves += 1;
                 board.print();
                 if moves == WIDTH * HEIGHT {
-                    assert!(result == MoveResult::Draw);
+                    assert_eq!(result, MoveResult::Draw);
                 } else {
-                    assert!(result != MoveResult::Draw);
+                    assert_ne!(result, MoveResult::Draw);
                 }
             }
         }

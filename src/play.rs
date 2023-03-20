@@ -3,7 +3,7 @@
 use crate::board::{self, Board, Cell, MoveResult};
 use rand::{thread_rng, Rng};
 
-const NUM_MOVES: usize = 1000;
+const NUM_MOVES: usize = 5;
 
 pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
     let mut rng = thread_rng();
