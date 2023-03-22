@@ -59,8 +59,12 @@ impl Board {
         }
     }
 
-    pub fn get(&self, x: usize, y: usize) -> Cell {
-        let pos = x * PADDED_HEIGHT + y;
+    pub fn get_move_count(&self) -> usize {
+        self.moves
+    }
+
+    pub fn get(&self, col: usize, y: usize) -> Cell {
+        let pos = col * PADDED_HEIGHT + y;
         let bit = 1 << pos;
         if bit & self.mask == 0 {
             Cell::Empty
@@ -79,8 +83,8 @@ impl Board {
         }
     }
 
-    pub fn is_valid_move(&self, x: usize) -> bool {
-        x < WIDTH && self.mask & (1 << x * PADDED_HEIGHT + HEIGHT - 1) == 0
+    pub fn is_valid_move(&self, col: usize) -> bool {
+        col < WIDTH && self.mask & (1 << col * PADDED_HEIGHT + HEIGHT - 1) == 0
     }
 
     pub fn get_current_player(&self) -> Cell {
@@ -130,9 +134,9 @@ impl Board {
         if self.check_vertical_win(bit, col) {
             return true;
         }
-        //if self.check_horizontal_win(bit, col) {
-        //    return true;
-        //}
+        if self.check_horizontal_win(bit, col) {
+            return true;
+        }
         false
     }
 
@@ -162,15 +166,13 @@ impl Board {
             bit
         } * LEFT_MASK;
 
-        loop {
+        for _ in 0..=col.min(WIDTH - col - 1) {
+            println!("=> {col} {0:#064b}", self.bitmap);
+            println!("     {mask:#064b}");
             if self.bitmap & mask == mask {
                 return true;
             }
-            // Check whether this mask is already at the left side of the board.
-            if mask & ((1 << PADDED_HEIGHT) - 1) != 0 {
-                break;
-            }
-            mask <<= PADDED_HEIGHT;
+            mask >>= PADDED_HEIGHT;
         }
         false
     }
@@ -226,19 +228,18 @@ mod board_tests {
     }
 
     #[test]
-    fn fill_board() {
+    fn fill_board_with_horizontal_wins() {
         let mut board = Board::new();
-        let mut moves = 0;
 
-        for x in 0..WIDTH {
+        for col in 0..WIDTH {
             for _row in 0..HEIGHT {
-                let result = board.make_move(x);
-                moves += 1;
-                board.print();
-                if moves == WIDTH * HEIGHT {
-                    assert_eq!(result, MoveResult::Draw);
+                let result = board.make_move(col);
+                if col < 3 {
+                    assert_eq!(result, MoveResult::None);
+                } else if (board.get_move_count() % 2) == 0 {
+                    assert_eq!(result, MoveResult::WinO);
                 } else {
-                    assert_ne!(result, MoveResult::Draw);
+                    assert_eq!(result, MoveResult::WinX);
                 }
             }
         }
@@ -249,10 +250,10 @@ mod board_tests {
         let mut board = Board::new();
         let mut cell = Cell::X;
 
-        for x in 0..WIDTH {
-            board.make_move(x);
+        for col in 0..WIDTH {
+            board.make_move(col);
             board.print();
-            assert!(board.get(x, 0) == cell);
+            assert!(board.get(col, 0) == cell);
             cell = cell.switch();
         }
     }
