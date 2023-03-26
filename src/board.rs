@@ -1,5 +1,7 @@
 // Defines the connect 4 board
 
+use std::convert::From;
+
 pub const WIDTH: usize = 7;
 pub const HEIGHT: usize = 6;
 const PADDED_HEIGHT: usize = 8; // align to a byte boundary
@@ -36,6 +38,16 @@ pub enum MoveResult {
     WinO,    // The move wins the game for O (i.e., second player)
     Draw,    // The game is filled up and is a draw
     Illegal, // The move is illegal
+}
+
+impl From<MoveResult> for Cell {
+    fn from(item: MoveResult) -> Self {
+        match item {
+            MoveResult::WinX => Cell::X,
+            MoveResult::WinO => Cell::O,
+            _ => Cell::Empty,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -115,7 +127,6 @@ impl Board {
         self.mask |= bit;
         self.bitmap ^= self.mask; // Flip all Cells
         self.moves += 1;
-        self.print();
         if self.check_win(bit, col) {
             match self.get_current_player() {
                 // reverse because this is now the next player.
@@ -131,13 +142,10 @@ impl Board {
     }
 
     fn check_win(&self, bit: u64, col: usize) -> bool {
-        if self.check_vertical_win(bit, col) {
-            return true;
-        }
-        if self.check_horizontal_win(bit, col) {
-            return true;
-        }
-        false
+        self.check_vertical_win(bit, col)
+            || self.check_horizontal_win(bit, col)
+            || self.check_upper_diagonal_win(bit, col)
+            || self.check_lower_diagonal_win(bit, col)
     }
 
     fn check_vertical_win(&self, bit: u64, col: usize) -> bool {
@@ -167,12 +175,59 @@ impl Board {
         } * LEFT_MASK;
 
         for _ in 0..=col.min(WIDTH - col - 1) {
-            println!("=> {col} {0:#064b}", self.bitmap);
-            println!("     {mask:#064b}");
             if self.bitmap & mask == mask {
                 return true;
             }
             mask >>= PADDED_HEIGHT;
+        }
+        false
+    }
+
+    fn check_upper_diagonal_win(&self, bit: u64, col: usize) -> bool {
+        const MASK: u64 = 1 << (0 * PADDED_HEIGHT + 0)
+            | 1 << (1 * PADDED_HEIGHT + 1)
+            | 1 << (2 * PADDED_HEIGHT + 2)
+            | 1 << (3 * PADDED_HEIGHT + 3);
+
+        let mut mask = if col > WIDTH - 4 {
+            bit >> ((PADDED_HEIGHT + 1) * (col - (WIDTH - 4)))
+        } else {
+            bit
+        } * MASK;
+
+        for _ in 0..=col.min(WIDTH - col - 1) {
+            //println!("upper=> {col} {0:#064b}", self.bitmap);
+            //println!("          {mask:#064b}");
+            if self.bitmap & mask == mask {
+                return true;
+            }
+            if mask & ((1 << (PADDED_HEIGHT + 1)) - 1) != 0 {
+                break;
+            }
+            mask >>= PADDED_HEIGHT + 1;
+        }
+        false
+    }
+
+    fn check_lower_diagonal_win(&self, bit: u64, col: usize) -> bool {
+        const MASK: u64 = 1 << (0 * PADDED_HEIGHT - 0)
+            | 1 << (1 * PADDED_HEIGHT - 1)
+            | 1 << (2 * PADDED_HEIGHT - 2)
+            | 1 << (3 * PADDED_HEIGHT - 3);
+
+        let mut mask = if col > WIDTH - 4 {
+            bit >> ((PADDED_HEIGHT - 1) * (col - (WIDTH - 4)))
+        } else {
+            bit
+        } * MASK;
+
+        for _ in 0..=col.min(WIDTH - col - 1) {
+            //println!("lower=> {col} {0:#064b}", self.bitmap);
+            //println!("          {mask:#064b}");
+            if self.bitmap & mask == mask {
+                return true;
+            }
+            mask >>= PADDED_HEIGHT - 1;
         }
         false
     }
@@ -214,7 +269,6 @@ mod board_tests {
 
         // fill first two columns up to 3 rows high, each with the same Cell.
         assert_eq!(board.make_moves(&vec![0, 1, 0, 1, 0, 1]), MoveResult::None);
-        board.print();
         assert_eq!(board.make_move(0), MoveResult::WinX);
 
         // Fill last two columns, but make O win in the upper-right corner.
@@ -246,13 +300,43 @@ mod board_tests {
     }
 
     #[test]
+    fn fill_board_with_diagonal_wins() {
+        let mut board = Board::new();
+
+        for row in 0..HEIGHT {
+            if row & 1 == 0 {
+                for col in 0..WIDTH {
+                    let result = board.make_move(col);
+                    if row < 3 {
+                        assert_eq!(result, MoveResult::None);
+                    } else if (board.get_move_count() % 2) == 0 {
+                        assert_eq!(result, MoveResult::WinO);
+                    } else {
+                        assert_eq!(result, MoveResult::WinX);
+                    }
+                }
+            } else {
+                for col in (0..WIDTH).rev() {
+                    let result = board.make_move(col);
+                    if row < 3 {
+                        assert_eq!(result, MoveResult::None);
+                    } else if (board.get_move_count() % 2) == 0 {
+                        assert_eq!(result, MoveResult::WinO);
+                    } else {
+                        assert_eq!(result, MoveResult::WinX);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn fill_row() {
         let mut board = Board::new();
         let mut cell = Cell::X;
 
         for col in 0..WIDTH {
             board.make_move(col);
-            board.print();
             assert!(board.get(col, 0) == cell);
             cell = cell.switch();
         }
@@ -265,11 +349,9 @@ mod board_tests {
 
         for row in 0..HEIGHT {
             assert!(board.make_move(0) == MoveResult::None);
-            board.print();
             assert!(board.get(0, row) == cell);
             cell = cell.switch();
         }
         assert!(board.make_move(0) == MoveResult::Illegal);
-        board.print();
     }
 }

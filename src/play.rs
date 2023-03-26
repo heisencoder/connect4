@@ -3,13 +3,13 @@
 use crate::board::{self, Board, Cell, MoveResult};
 use rand::{thread_rng, Rng};
 
-const NUM_MOVES: usize = 5;
+const NUM_GAMES: usize = 5;
 
-pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
+pub fn monte_carlo(board: &Board, cell: Cell) -> f64 {
     let mut rng = thread_rng();
-    let mut wins = 0;
+    let mut wins: isize = 0;
     let mut moves = 0;
-    for _ in 0..NUM_MOVES {
+    for _ in 0..NUM_GAMES {
         let mut sim_board = board.clone();
         let mut sim_cell = cell;
         loop {
@@ -25,8 +25,15 @@ pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
             let index = rng.gen_range(0..valid_moves.len());
             let x = valid_moves[index];
             let result = sim_board.make_move(x);
+            moves += 1;
             if result == MoveResult::WinX || result == MoveResult::WinO {
-                wins += 1;
+                //println!("Game Result: {x}: {result:?}");
+                //sim_board.print();
+                if Cell::from(result) == cell {
+                    wins += 1;
+                } else {
+                    wins -= 1;
+                }
                 break;
             }
             sim_cell = match sim_cell {
@@ -34,15 +41,16 @@ pub fn monte_carlo(board: &Board, cell: Cell) -> usize {
                 Cell::O => Cell::X,
                 Cell::Empty => unreachable!(),
             };
-            moves += 1;
             if sim_board.is_full() {
+                //println!("Board is full");
+                //sim_board.print();
                 break;
             }
         }
     }
     if moves == 0 {
-        0
+        0.0
     } else {
-        wins * board::WIDTH / moves
+        wins as f64 / moves as f64
     }
 }

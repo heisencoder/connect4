@@ -14,11 +14,12 @@ fn main() {
             println!("It's a draw!");
             break;
         }
-        let mut best_score = 0;
+        let mut best_score = 0.0;
         let mut best_move = None;
         for x in 0..board::WIDTH {
             if board.is_valid_move(x) {
                 let score = play::monte_carlo(&board, cell);
+                println!("Col: {x}, Score: {score}");
 
                 if score > best_score {
                     best_score = score;
